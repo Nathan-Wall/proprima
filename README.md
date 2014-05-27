@@ -1,6 +1,6 @@
 **Proprima** is a high performance, standard
 parser for the [Proto language](https://github.com/Nathan-Wall/proto) written in ECMAScript (also popularly known as
-[JavaScript](http://en.wikipedia.org/wiki/JavaScript>JavaScript)).
+[JavaScript](http://en.wikipedia.org/wiki/JavaScript)).
 Proprima is created and maintained by Nathan Wall.
 It is derived from [Esprima](https://github.com/ariya/esprima) by [Ariya Hidayat](http://twitter.com/ariyahidayat)
 and [many contributors](https://github.com/ariya/esprima/contributors).
