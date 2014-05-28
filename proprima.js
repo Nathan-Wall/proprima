@@ -1,5 +1,5 @@
 // From commit: cbed764d67bfb6d38abc9fe62219f3375c076920
-// Modified by Nathan Wall, 2013.
+// Modified by Nathan Wall, 2013-2014.
 
 /*
   Copyright (C) 2013 Ariya Hidayat <ariya.hidayat@gmail.com>
@@ -43,7 +43,7 @@
     } else if (typeof exports !== 'undefined') {
         factory(exports);
     } else {
-        factory((root.esprima = {}));
+        factory((root.proprima = {}));
     }
 }(this, function (exports) {
     'use strict';
@@ -2530,19 +2530,6 @@
                 arg = parseSpreadOrAssignmentExpression();
                 args.push(arg);
 
-                if (match('|')) {
-                    switch (arg.type) {
-                        case Syntax.Identifier:
-                        case Syntax.ObjectExpression:
-                        case Syntax.ArrayExpression:
-                            break;
-                        default:
-                            throwErrorTolerant(lookahead, Messages.InvalidCoercive);
-                    }
-                    lex();
-                    arg.coercive = parseCoercive();
-                }
-
                 if (match(')')) {
                     break;
                 }
@@ -2649,16 +2636,6 @@
             if (match('(')) {
                 args = parseArguments();
                 expr = delegate.createCallExpression(expr, args);
-                if ((match(':{') || match('::{')) && expr.type == 'CallExpression' &&
-                    expr.callee && expr.callee.type == 'Identifier') {
-                    expr = reinterpretAsNamedFunctionExpression(expr);
-                } else {
-                    for (var i = 0; i < expr.arguments.length; i++) {
-                        if ('coercive' in expr.arguments[i]) {
-                            throwErrorTolerant(lookahead, Messages.InvalidCoercive);
-                        }
-                    }
-                }
             } else if (match('[')) {
                 expr = delegate.createMemberExpression(true, false, expr, parseComputedMember());
             } else if (match('.')) {
@@ -3019,92 +2996,6 @@
                 throwError({}, Messages.InvalidLHSInFormalsList);
             }
         }
-    }
-
-    function reinterpretAsCoverFormalsList(expressions) {
-        var i, len, param, params, defaults, coercives, defaultCount, coerciveCount, options, rest;
-
-        params = [];
-        defaults = [];
-        defaultCount = 0;
-        coercives = [];
-        coerciveCount = 0;
-        rest = null;
-        options = {
-            paramSet: {}
-        };
-
-        for (i = 0, len = expressions.length; i < len; i += 1) {
-            param = expressions[i];
-            if (param.type === Syntax.Identifier) {
-                params.push(param);
-                defaults.push(null);
-                coercives.push(param.coercive || null);
-                coerciveCount += 'coercive' in param;
-                validateParam(options, param, param.name);
-            } else if (param.type === Syntax.ObjectExpression || param.type === Syntax.ArrayExpression) {
-                reinterpretAsDestructuredParameter(options, param);
-                params.push(param);
-                defaults.push(null);
-                coercives.push(param.coercive || null);
-                coerciveCount += 'coercive' in param;
-            } else if (param.type === Syntax.SpreadElement) {
-                assert(i === len - 1, "It is guaranteed that SpreadElement is last element by parseExpression");
-                reinterpretAsDestructuredParameter(options, param.argument);
-                rest = param.argument;
-            } else if (param.type === Syntax.AssignmentExpression) {
-                params.push(param.left);
-                defaults.push(param.right);
-                ++defaultCount;
-                coercives.push(param.coercive || null);
-                coerciveCount += 'coercive' in param;
-            } else {
-                return null;
-            }
-        }
-
-        if (defaultCount === 0) {
-            defaults = [];
-        }
-        if (coerciveCount === 0) {
-            coercives = [];
-        }
-
-        return { params: params, defaults: defaults, coercives: coercives, rest: rest };
-    }
-
-    // TODO: Get rid of this? Does it still work? If it's what I think it is, I
-    // think the functionality has been deprecated and it should be removed.
-    // TODO: If this is not removed, I think some parts of code that call it need
-    // to be updated to match ':' and '::' tokens as well as the existing ':{' and '::{'
-    function reinterpretAsNamedFunctionExpression(expr) {
-        var previousYieldAllowed, previousAwaitAllowed, id, coverFormalsList, body, lexicalThis, expression;
-
-        id = expr.callee;
-
-        lexicalThis = match('::{') || match('::');
-        expression = match(':') || match('::');
-
-        if (match(':{') || match('::{') || match(':') || match('::')) {
-            lex();
-        } else {
-            throwUnexpected(lookahead);
-        }
-
-        previousYieldAllowed = state.yieldAllowed;
-        state.yieldAllowed = false;
-        previousAwaitAllowed = state.awaitAllowed;
-        state.awaitAllowed = false;
-        body = parseFunctionSourceElements();
-        state.yieldAllowed = previousYieldAllowed;
-        state.awaitAllowed = previousAwaitAllowed;
-
-        coverFormalsList = reinterpretAsCoverFormalsList(expr.arguments);
-
-        return delegate.createFunctionExpression(
-            id, coverFormalsList.params, coverFormalsList.defaults, coverFormalsList.coercives, body,
-            coverFormalsList.rest, false, false, lexicalThis, expression, null
-        );
     }
 
     function parseAssignmentExpression() {
@@ -4871,16 +4762,6 @@
             if (match('(')) {
                 args = parseArguments();
                 expr = delegate.createCallExpression(expr, args);
-                if ((match(':{') || match('::{')) && expr.type == 'CallExpression' &&
-                    expr.callee && expr.callee.type == 'Identifier') {
-                    expr = reinterpretAsNamedFunctionExpression(expr);
-                } else {
-                    for (var i = 0; i < expr.arguments.length; i++) {
-                        if ('coercive' in expr.arguments[i]) {
-                            throwErrorTolerant(lookahead, Messages.InvalidCoercive);
-                        }
-                    }
-                }
                 marker.end();
                 marker.apply(expr);
             } else if (match('[')) {
