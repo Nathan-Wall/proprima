@@ -112,7 +112,8 @@
 		'?', ':', '==', '>=', '<=', '<', '>', '!=', 'lsh', 'rsh', 'ursh',
 		// extensions
 		'and', 'or', 'xor', 'not', 'like', '!like', '!in', ':=', '::', '..',
-		'...', '??', ':(', '~=', '!~=', 'is', '!is', 'by'
+		'...', '??', ':(', '~=', '!~=', 'is', '!is', 'by', 'await', 'each'
+		// TODO: Should `yield` be here? Should `await` and `each` be removed?
 	];
 
 	Syntax = {
@@ -127,7 +128,6 @@
 		CascadeStatement: 'CascadeStatement',
 		CatchClause: 'CatchClause',
 		Coercive: 'Coercive',
-		ComprehensionBlock: 'ComprehensionBlock',
 		ComprehensionExpression: 'ComprehensionExpression',
 		ConditionalExpression: 'ConditionalExpression',
 		ContinueStatement: 'ContinueStatement',
@@ -274,11 +274,7 @@
 		NestedModule:
 			'Module declaration can not be nested',
 		NoUnintializedConst:
-			'Const must be initialized',
-		ComprehensionRequiresBlock:
-			'Comprehension must have at least one block',
-		ComprehensionError:
-			'Comprehension Error'
+			'Const must be initialized'
 	};
 
 	// See also tools/generate-unicode-regex.py.
@@ -406,7 +402,7 @@
 			// I'm leaving `with` for now to keep it reserved.
 			return id === 'this' || id === 'else' || id === 'case'
 				|| id === 'void' || id === 'with' || id === 'enum'
-				|| id === 'like';
+				|| id === 'like' || id === 'each';
 		case 5:
 			return id === 'while' || id === 'break' || id === 'catch'
 				|| id === 'throw' || id === 'const' || id === 'yield'
@@ -677,12 +673,10 @@
 
 		switch (code) {
 		// Check for most common single-character punctuators.
-		case 40:   // ( open bracket
 		case 41:   // ) close bracket
 		case 59:   // ; semicolon
 		case 44:   // , comma
 		case 123:  // { open curly brace
-		case 91:   // [
 		case 93:   // ]
 		case 64:   // @
 			++index;
@@ -792,10 +786,12 @@
 			};
 		}
 
-		// Other 2-character punctuators: #[ :{ :(
+		// Other 2-character punctuators: #[ :{ :( [: (:
 		if (ch1 === '#' && ch2 === '['
 		|| ch1 === ':' && ch2 === '{'
-		|| ch1 === ':' && ch2 === '(') {
+		|| ch1 === ':' && ch2 === '('
+		|| ch1 === '[' && ch2 === ':'
+		|| ch1 === '(' && ch2 === ':') {
 			index += 2;
 			return {
 				type: Token.Punctuator,
@@ -806,7 +802,7 @@
 			};
 		}
 
-		if ('<>=!+-*&^/#:|?}'.indexOf(ch1) >= 0) {
+		if ('<>=!+-*&^/#:|?}[('.indexOf(ch1) >= 0) {
 			++index;
 			return {
 				type: Token.Punctuator,
@@ -2064,6 +2060,14 @@
 			return {
 				type: Syntax.CascadeContext
 			};
+		},
+
+		createComprehensionExpression: function(kind, body) {
+			return {
+				type: Syntax.ComprehensionExpression,
+				kind: kind,
+				body: body
+			};
 		}
 
 	};
@@ -2245,40 +2249,14 @@
 
 	function parseArrayInitialiser() {
 
-		var elements, blocks, filter, tmp, possiblecomprehension, body;
+		var elements, tmp, body;
 
 		elements = [ ];
-		blocks = [ ];
-		filter = null;
-		possiblecomprehension = true;
 
 		expect('[');
 		while (!match(']')) {
-			if (lookahead.value === 'for'
-			&& lookahead.type === Token.Keyword) {
-				if (!possiblecomprehension)
-					throwError({ }, Messages.ComprehensionError);
-				matchKeyword('for');
-				tmp = parseForStatement({ignore_body: true});
-				tmp.of = tmp.type === Syntax.ForOfStatement;
-				tmp.type = Syntax.ComprehensionBlock;
-				if (tmp.left.kind) // can't be const
-					throwError({ }, Messages.ComprehensionError);
-				blocks.push(tmp);
-			}
-			else if (lookahead.value === 'if'
-			&& lookahead.type === Token.Keyword) {
-				if (!possiblecomprehension) {
-					throwError({ }, Messages.ComprehensionError);
-				}
-				expectKeyword('if');
-				expect('(');
-				filter = parseExpression();
-				expect(')');
-			}
-			else if (lookahead.value === ','
+			if (lookahead.value === ','
 			&& lookahead.type === Token.Punctuator) {
-				possiblecomprehension = false; // no longer allowed.
 				lex();
 				elements.push(null);
 				if (match(']')) {
@@ -2296,7 +2274,6 @@
 				|| matchKeyword('for')
 				|| matchKeyword('if'))) {
 					expect(','); // this lexes.
-					possiblecomprehension = false;
 					if (match(']')) {
 						elements.push(null);
 					}
@@ -2306,23 +2283,48 @@
 
 		expect(']');
 
-		if (filter && !blocks.length) {
-			throwError({ }, Messages.ComprehensionRequiresBlock);
-		}
-
-		if (blocks.length) {
-			if (elements.length !== 1) {
-				throwError({ }, Messages.ComprehensionError);
-			}
-			return {
-				type: Syntax.ComprehensionExpression,
-				filter: filter,
-				blocks: blocks,
-				body: elements[0]
-			};
-		}
-
 		return delegate.createArrayExpression(elements);
+
+	}
+
+	function parseComprehensionExpression() {
+
+		var body, kind, closer, previousEachAllowed, previousYieldAllowed;
+
+		if (match('[:')) {
+			kind = 'array';
+			closer = ']';
+		}
+		else if (match('(:')) {
+			kind = 'generator';
+			closer = ')';
+		}
+		// TODO:
+		// else if (match('{:')) {
+		// 	kind = 'async';
+		//	closer = '}';
+		// }
+		else
+			throwUnexpected(lookahead);
+		lex();
+
+		if (kind == 'array') {
+			previousEachAllowed = state.eachAllowed;
+			state.eachAllowed = true;
+		}
+		else if (kind == 'generator') {
+			previousYieldAllowed = state.yieldAllowed;
+			state.yieldAllowed = true;
+		}
+		body = parseStatementList(closer);
+		if (kind == 'array')
+			state.eachAllowed = previousEachAllowed;
+		else if (kind == 'generator')
+			state.yieldAllowed = previousYieldAllowed;
+
+		expect(closer);
+
+		return delegate.createComprehensionExpression(kind, body);
 
 	}
 
@@ -2672,6 +2674,9 @@
 		if (match('['))
 			return parseArrayInitialiser();
 
+		if (match('[:') || match('(:'))
+			return parseComprehensionExpression();
+
 		if (match('{'))
 			return parseObjectInitialiser();
 
@@ -2890,7 +2895,7 @@
 	// 11.4 Unary Operators
 	function parseUnaryExpression() {
 
-		var token, expr;
+		var token, expr, isEach;
 
 		if (lookahead.type !== Token.Punctuator
 		&& lookahead.type !== Token.Keyword)
@@ -2921,9 +2926,15 @@
 
 		if (matchKeyword('delete') || matchKeyword('void')
 		|| matchKeyword('typeof') || matchKeyword('like')
-		|| matchKeyword('not') || matchKeyword('await')) {
+		|| matchKeyword('not')
+		|| state.awaitAllowed && matchKeyword('await')
+		|| state.eachAllowed && matchKeyword('each')) {
+			isEach = matchKeyword('each');
 			token = lex();
-			expr = parseUnaryExpression();
+			if (isEach)
+				expr = parseAssignmentExpression();
+			else
+				expr = parseUnaryExpression();
 			expr = delegate.createUnaryExpression(token.value, expr);
 			if (expr.operator === 'delete'
 			&& expr.argument.type === Syntax.Identifier)
@@ -3269,13 +3280,16 @@
 
 	// 12.1 Block
 
-	function parseStatementList() {
+	function parseStatementList(closer) {
+
+		if (closer === undefined)
+			closer = '}';
 
 		var list = [ ],
 			statement;
 
 		while (index < length) {
-			if (match('}'))
+			if (match(closer))
 				break;
 			statement = parseSourceElement();
 			if (typeof statement === 'undefined')
@@ -5495,9 +5509,12 @@
 			inIteration: false,
 			inSwitch: false,
 			yieldAllowed: false,
+			// TODO: Can `yieldFound` be removed? What was it for originally?
 			yieldFound: false,
 			awaitAllowed: false,
-			awaitFound: false
+			// TODO: If `yieldFound` can't be removed, should there be an
+			// `awaitFound`?
+			eachAllowed: false
 		};
 
 		extra = { };
