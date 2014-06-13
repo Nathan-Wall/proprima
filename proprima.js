@@ -4083,7 +4083,10 @@
 			return throwUnexpected(lex());
 		}
 
-		expr = parseExpression();
+		if (parsingAsExpression)
+			expr = parseAssignmentExpression();
+		else
+			expr = parseExpression();
 
 		if (!parsingAsExpression) {
 			consumeSemicolon();
