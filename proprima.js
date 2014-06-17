@@ -2394,6 +2394,7 @@
 		coercive = null;
 		isStatic = false;
 		isConst = false;
+		isConditional = false;
 
 		if (token.type === Token.Keyword && token.value === 'static'
 		&& !(match(':') || match('::') || match('('))) {
