@@ -113,7 +113,7 @@
 		// extensions
 		'and', 'or', 'xor', 'not', 'like', '!like', '!in', ':=', '::', '..',
 		'...', '??', ':(', '~=', '!~=', 'is', '!is', 'by', 'await', 'each',
-
+		'&&=', '||=', '??=', 'and=', 'or=', 'xor='
 		// TODO: Should `yield` be here? Should `await` and `each` be removed?
 	];
 
@@ -392,13 +392,13 @@
 		switch (id.length) {
 		case 2:
 			return id === 'if' || id === 'in' || id === 'do'
-				|| id === 'fn' || id === 'or' || id == 'is'
-				|| id === 'of' || id === 'by';
+				|| id === 'fn' || id == 'is' || id === 'of'
+				|| id === 'by' || id === 'or';
 		case 3:
 			return id === 'var' || id === 'for' || id === 'new'
-				|| id === 'try' || id === 'and'
-				|| id === 'xor' || id === 'not' || id === 'sym'
-				|| id === 'gen' || id === 'mod';
+				|| id === 'try' || id === 'not' || id === 'sym'
+				|| id === 'gen' || id === 'mod' || id === 'and'
+				|| id === 'xor';
 		case 4:
 			// I'm leaving `with` for now to keep it reserved.
 			return id === 'this' || id === 'else' || id === 'case'
@@ -636,6 +636,19 @@
 		id = source.charCodeAt(index) === 92
 			? getEscapedIdentifier() : getIdentifier();
 
+		// These are punctuators
+		if (source[index] === '=' && (id === 'and' || id === 'or' || id === 'xor')) {
+			index++;
+			return {
+				type: Token.Punctuator,
+				value: id + '=',
+				lineNumber: lineNumber,
+				lineStart: lineStart,
+				range: [ start, index ]
+			};
+		}
+
+
 		// There is no keyword or literal with only one character.
 		// Thus, it must be an identifier.
 		if (id.length === 1)
@@ -757,13 +770,16 @@
 			}
 		}
 
-		// 3-character punctuators: ... ::{ !~= !is !in
+		// 3-character punctuators: ... ::{ !~= !is !in &&= ||= ??= or=
 
 		if (ch1 === '.' && ch2 === '.' && ch3 === '.'
 		|| ch1 === ':' && ch2 === ':' && ch3 === '{'
 		|| ch1 === '!' && ch2 === '~' && ch3 === '='
 		|| ch1 === '!' && ch2 === 'i' && ch3 === 's'
-		|| ch1 === '!' && ch2 === 'i' && ch3 === 'n') {
+		|| ch1 === '!' && ch2 === 'i' && ch3 === 'n'
+		|| ch1 === '&' && ch2 === '&' && ch3 === '='
+		|| ch1 === '|' && ch2 === '|' && ch3 === '='
+		|| ch1 === '?' && ch2 === '?' && ch3 === '=') {
 			index += 3;
 			return {
 				type: Token.Punctuator,
@@ -2212,8 +2228,10 @@
 		op = lookahead.value;
 
 		return op === '='  || op === '*=' || op === '/='
-			|| op === '+=' || op === '-=' || op === '&='
-			|| op === '^=' || op === ':=';
+			|| op === '+=' || op === '-=' || op === '^='
+			|| op === ':=' || op === '&='
+			|| op === '&&=' || op === '||=' || op === '??='
+			|| op === 'and=' || op === 'or=' || op === 'xor=';
 
 	}
 
