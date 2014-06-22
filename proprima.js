@@ -112,7 +112,8 @@
 		'?', ':', '==', '>=', '<=', '<', '>', '!=', 'lsh', 'rsh', 'ursh',
 		// extensions
 		'and', 'or', 'xor', 'not', 'like', '!like', '!in', ':=', '::', '..',
-		'...', '??', ':(', '~=', '!~=', 'is', '!is', 'by', 'await', 'each'
+		'...', '??', ':(', '~=', '!~=', 'is', '!is', 'by', 'await', 'each',
+
 		// TODO: Should `yield` be here? Should `await` and `each` be removed?
 	];
 
