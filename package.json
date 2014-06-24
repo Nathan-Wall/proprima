@@ -1,0 +1,25 @@
+{
+  "name": "proprima",
+  "version": "0.1.0",
+  "description": "Standard parser for the Proto programming language",
+  "main": "proprima.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Nathan-Wall/proprima"
+  },
+  "keywords": [
+    "Proto",
+    "programming",
+    "language",
+    "parser"
+  ],
+  "author": "Nathan-Wall",
+  "license": "BSD",
+  "bugs": {
+    "url": "https://github.com/Nathan-Wall/proprima/issues"
+  },
+  "homepage": "https://github.com/Nathan-Wall/proprima"
+}
