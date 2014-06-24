@@ -1594,7 +1594,9 @@
 
 		createBinaryExpression: function(operator, left, right) {
 			return {
-				type: operator === '||' || operator === '&&'
+				type: operator === '||'
+					|| operator === '&&'
+					|| operator === '??'
 					? Syntax.LogicalExpression : Syntax.BinaryExpression,
 				operator: operator,
 				left: left,
