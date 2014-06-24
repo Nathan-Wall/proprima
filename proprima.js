@@ -636,19 +636,6 @@
 		id = source.charCodeAt(index) === 92
 			? getEscapedIdentifier() : getIdentifier();
 
-		// These are punctuators
-		if (source[index] === '=' && (id === 'and' || id === 'or' || id === 'xor')) {
-			index++;
-			return {
-				type: Token.Punctuator,
-				value: id + '=',
-				lineNumber: lineNumber,
-				lineStart: lineStart,
-				range: [ start, index ]
-			};
-		}
-
-
 		// There is no keyword or literal with only one character.
 		// Thus, it must be an identifier.
 		if (id.length === 1)
@@ -5525,6 +5512,7 @@
 		lineStart = 0;
 		length = source.length;
 		lookahead = null;
+		parsingAsExpression = false;
 		state = {
 			allowKeyword: false,
 			labelSet: { },
