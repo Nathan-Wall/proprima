@@ -1856,6 +1856,10 @@
 		},
 
 		createSequenceExpression: function(expressions) {
+			if (!expressions || !('length' in expressions))
+				throw new Error('Array expected');
+			if (expressions.length == 0)
+				throw new Error('Sequence expression must contain at least one expression');
 			return {
 				type: Syntax.SequenceExpression,
 				expressions: expressions
@@ -3955,7 +3959,7 @@
 
 	function parseSwitchStatement() {
 
-		var discriminant, cases, clause, oldInSwitch, defaultFound;
+		var discriminant, cases, clause, oldInSwitch, defaultFound, oldParsingAsExpression;
 
 		expectKeyword('switch');
 
@@ -3963,6 +3967,8 @@
 
 		// TODO: Is ':{' correct here?
 		expect(':{');
+		oldParsingAsExpression = parsingAsExpression;
+		parsingAsExpression = false;
 
 		cases = [ ];
 
@@ -3991,6 +3997,7 @@
 
 		state.inSwitch = oldInSwitch;
 
+		parsingAsExpression = oldParsingAsExpression;
 		expect('}');
 
 		return delegate.createSwitchStatement(discriminant, cases);
@@ -4078,28 +4085,24 @@
 		}
 
 		statement = parseStatementByType();
-		if (parsingAsExpression && switchedAsExpression) {
+		if (parsingAsExpression && switchedAsExpression)
 			parsingAsExpression = false;
-		}
 		if (statement !== undefined) {
-			if (asExpression) {
+			if (asExpression)
 				statement = delegate.createStatementExpression(statement);
-			}
 			return statement;
 		}
 
-		if (asExpression) {
+		if (asExpression)
 			return throwUnexpected(lex());
-		}
 
 		if (parsingAsExpression)
 			expr = parseAssignmentExpression();
 		else
 			expr = parseExpression();
 
-		if (!parsingAsExpression) {
+		if (!parsingAsExpression)
 			consumeSemicolon();
-		}
 
 		return delegate.createExpressionStatement(expr);
 
