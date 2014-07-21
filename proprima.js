@@ -400,7 +400,6 @@
 				|| id === 'gen' || id === 'mod' || id === 'and'
 				|| id === 'xor';
 		case 4:
-			// I'm leaving `with` for now to keep it reserved.
 			return id === 'this' || id === 'else' || id === 'case'
 				|| id === 'void' || id === 'with' || id === 'enum'
 				|| id === 'like' || id === 'each';
@@ -2821,9 +2820,8 @@
 
 		var object, block;
 
-		expect('|');
+		expectKeyword('with');
 		object = parseExpression();
-		expect('|');
 
 		++state.inCascadeCount;
 		block = parseBlock();
@@ -4132,8 +4130,6 @@
 				return parseExpressionStatement();
 			case ':':
 				return parseLabeledStatement();
-			case '|':
-				return parseCascadeStatement();
 			default:
 				break;
 			}
@@ -4179,6 +4175,8 @@
 				return parseTryStatement();
 			case 'while':
 				return parseWhileStatement();
+			case 'with':
+				return parseCascadeStatement();
 			default:
 				break;
 			}
